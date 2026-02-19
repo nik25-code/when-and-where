@@ -8,6 +8,7 @@ import ChatbotExperience from "@/components/ChatbotExperience";
 import VoiceExperience from "@/components/VoiceExperience";
 import FollowUpSurvey, { type SurveyResponses } from "@/components/FollowUpSurvey";
 import ThankYouPage from "@/components/ThankYouPage";
+import { supabase } from "@/lib/supabase";
 
 type ExperienceType = "form" | "chatbot" | "voice";
 
@@ -55,21 +56,29 @@ export default function Home() {
   };
 
   const handleSurveyComplete = async (responses: SurveyResponses) => {
-    // Save to localStorage as backup (Supabase integration later)
-    const submission = {
-      userName,
-      userEmail,
-      experienceOrder,
-      responses,
-      submittedAt: new Date().toISOString(),
-    };
+    // Save to Supabase
+    const { error } = await supabase.from("survey_responses").insert({
+      user_name: userName,
+      user_email: userEmail,
+      experience_order: experienceOrder,
+      interface_ranking: responses.interfaceRanking,
+      interface_why: responses.interfaceWhy,
+      pain_level: responses.painLevel,
+      time_match_value: responses.timeMatchValue,
+      what_matters_more: responses.whatMattersMore,
+      form_completion_likelihood: responses.formCompletionLikelihood,
+      group_size: responses.groupSize,
+      additional_thoughts: responses.additionalThoughts,
+    });
 
-    // Store locally
-    const existing = JSON.parse(localStorage.getItem("ww-responses") || "[]");
-    existing.push(submission);
-    localStorage.setItem("ww-responses", JSON.stringify(existing));
+    if (error) {
+      console.error("Failed to save response:", error);
+      // Fall back to localStorage
+      const existing = JSON.parse(localStorage.getItem("ww-responses") || "[]");
+      existing.push({ userName, userEmail, experienceOrder, responses, submittedAt: new Date().toISOString() });
+      localStorage.setItem("ww-responses", JSON.stringify(existing));
+    }
 
-    console.log("Survey submission:", submission);
     setStep("thanks");
   };
 
